@@ -25,6 +25,17 @@
       padding: 20px;
     }
 
+    body::-webkit-scrollbar {
+      width: 12px;
+      background: #0F0F0F;
+    }
+
+    body::-webkit-scrollbar-thumb {
+      background: #27d745;
+      border-radius: 5px;
+      border: 3px solid #0F0F0F;
+    }
+
     h1 {
       margin-bottom: 20px;
     }
@@ -51,6 +62,11 @@
       width: 520px;
       transition: background 0.4s ease;
       border-left: 4px solid #444;
+
+      &:hover {
+        cursor: pointer;
+        background: #222;
+      }
     }
 
     .card.green {
@@ -294,8 +310,68 @@
         symbol: "NFLX",
         name: "Netflix",
         logo: getLogo("NFLX")
-      }
+      },
+      {
+        symbol: "DIS",
+        name: "Walt Disney",
+        logo: getLogo("DIS")
+      },
+      {
+        symbol: "AMD",
+        name: "Advanced Micro Devices",
+        logo: getLogo("AMD")
+      },
+      {
+        symbol: "INTC",
+        name: "Intel",
+        logo: getLogo("INTC")
+      },
+      {
+        symbol: "BABA",
+        name: "Alibaba",
+        logo: getLogo("BABA")
+      },
+      {
+        symbol: "V",
+        name: "Visa",
+        logo: getLogo("V")
+      },
+      {
+        symbol: "MA",
+        name: "Mastercard",
+        logo: getLogo("MA")
+      },
+      {
+        symbol: "AXP",
+        name: "American Express",
+        logo: getLogo("AXP")
+      },
+      {
+        symbol: "ORCL",
+        name: "Oracle",
+        logo: getLogo("ORCL")
+      },
+      {
+        symbol: "NKE",
+        name: "Nike",
+        logo: getLogo("NKE")
+      },
+      {
+        symbol: "KO",
+        name: "Coca-Cola",
+        logo: getLogo("KO")
+      },
+      {
+        symbol: "MCD",
+        name: "McDonald's",
+        logo: getLogo("MCD")
+      },
     ];
+
+    const openTradingView = (symbol) => {
+      const url = `https://www.tradingview.com/chart/?symbol=${symbol}`;
+      window.open(url, "_blank");
+    }
 
     const decodeTicker = (base64) => {
       try {
@@ -484,7 +560,11 @@
             const displayName = t?.shortName || conf.name;
 
             return (
-              <div key={conf.symbol} className={`card ${trendClass}`}>
+              <div
+                key={conf.symbol}
+                className={`card ${trendClass}`}
+                onClick={() => openTradingView(conf.symbol)}
+              >
                 <div className="left">
                   <img src={conf.logo} alt={conf.symbol} className="logo" />
                   <div>
