@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Yahoo Finance Live Prices</title>
+
+  <!-- React -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Protobuf.js -->
+  <script src="https://cdn.jsdelivr.net/npm/protobufjs/dist/protobuf.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      background: #0f0f0f;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1a1a1a;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      width: 520px;
+      transition: background 0.4s ease;
+      border-left: 4px solid #444;
+    }
+
+    .card.green {
+      background: #122916;
+      border-left-color: #27d745;
+    }
+
+    .card.red {
+      background: #3a0f11;
+      border-left-color: #ff3d3d;
+    }
+
+    .left {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .logo {
+      width: 50px;
+      height: 50px;
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+      border-radius: 100%;
+      margin-right: 10px;
+    }
+
+    .name {
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+
+    .symbol {
+      opacity: 0.8;
+      font-size: 0.95rem;
+    }
+
+    .market-tag {
+      font-size: 0.75rem;
+      padding: 2px 7px;
+      border-radius: 5px;
+      margin-top: 4px;
+      display: inline-block;
+      background: #155;
+    }
+
+    .market-pre {
+      background: #555;
+    }
+
+    .market-regular {
+      background: #155;
+    }
+
+    .market-post {
+      background: #913;
+    }
+
+    .market-extended {
+      background: #446;
+    }
+
+    .right {
+      text-align: right;
+      min-width: 210px;
+    }
+
+    .price {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+
+    .change-line {
+      font-size: 0.9rem;
+      margin-top: 2px;
+      margin-bottom: 4px;
+    }
+
+    .change-pos {
+      color: #4caf50;
+    }
+
+    .change-neg {
+      color: #ff5252;
+    }
+
+    .extras {
+      font-size: 0.8rem;
+      opacity: 0.85;
+    }
+
+    .extras span {
+      display: inline-block;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const protoSchema = `
+      syntax = "proto3";
+
+      message yaticker {
+
+        enum QuoteType {
+          NONE = 0;
+          ALTSYMBOL = 5;
+          HEARTBEAT = 7;
+          EQUITY = 8;
+          INDEX = 9;
+          MUTUALFUND = 11;
+          MONEYMARKET = 12;
+          OPTION = 13;
+          CURRENCY = 14;
+          WARRANT = 15;
+          BOND = 17;
+          FUTURE = 18;
+          ETF = 20;
+          COMMODITY = 23;
+          ECNQUOTE = 28;
+          CRYPTOCURRENCY = 41;
+          INDICATOR = 42;
+          INDUSTRY = 1000;
+        };
+
+        enum OptionType {
+          CALL = 0;
+          PUT = 1;
+        };
+
+        enum MarketHoursType {
+          PRE_MARKET = 0;
+          REGULAR_MARKET = 1;
+          POST_MARKET = 2;
+          EXTENDED_HOURS_MARKET = 3;
+        };
+
+        string id = 1;
+        float price = 2;
+        sint64 time = 3;
+        string currency = 4;
+        string exchange = 5;
+
+        QuoteType quoteType = 6;
+        MarketHoursType marketHours = 7;
+        float changePercent = 8;
+        sint64 dayVolume = 9;
+        float dayHigh = 10;
+        float dayLow = 11;
+        float change = 12;
+        string shortName = 13;
+        sint64 expireDate = 14;
+        float openPrice = 15;
+        float previousClose = 16;
+        float strikePrice = 17;
+        string underlyingSymbol = 18;
+        sint64 openInterest = 19;
+        OptionType optionsType = 20;
+        sint64 miniOption = 21;
+        sint64 lastSize = 22;
+        float bid = 23;
+        sint64 bidSize = 24;
+        float ask = 25;
+        sint64 askSize = 26;
+        sint64 priceHint = 27;
+        sint64 vol_24hr = 28;
+        sint64 volAllCurrencies = 29;
+        string fromcurrency = 30;
+        string lastMarket = 31;
+        double circulatingSupply = 32;
+        double marketcap = 33;
+      };
+    `;
+
+    const yatickerRoot = protobuf.parse(protoSchema).root;
+    const YATICKER = yatickerRoot.lookupType("yaticker");
+
+    const getLogo = (symbol) =>
+      `https://companiesmarketcap.com/img/company-logos/64/${symbol}.webp`;
+
+    const STOCKS = [
+      {
+        symbol: "NVDA",
+        name: "NVIDIA",
+        logo: getLogo("NVDA")
+      },
+      {
+        symbol: "AAPL",
+        name: "Apple",
+        logo: getLogo("AAPL")
+      },
+      {
+        symbol: "GOOG",
+        name: "Alphabet (Google)",
+        logo: getLogo("GOOG")
+      },
+      {
+        symbol: "MSFT",
+        name: "Microsoft",
+        logo: getLogo("MSFT")
+      },
+      {
+        symbol: "AMZN",
+        name: "Amazon",
+        logo: getLogo("AMZN")
+      },
+      {
+        symbol: "META",
+        name: "Meta",
+        logo: getLogo("META")
+      },
+      {
+        symbol: "TSLA",
+        name: "Tesla",
+        logo: getLogo("TSLA")
+      },
+      {
+        symbol: "NFLX",
+        name: "Netflix",
+        logo: getLogo("NFLX")
+      }
+    ];
+
+    const decodeTicker = (base64) => {
+      try {
+        const raw = atob(base64);
+        const buf = Uint8Array.from(raw, c => c.charCodeAt(0));
+        const msg = YATICKER.decode(buf);
+        return YATICKER.toObject(msg, { longs: Number, defaults: true });
+      } catch (e) {
+        console.warn("Decode error:", e.message);
+        return null;
+      }
+    }
+
+    const formatNumber = (num) => {
+      if (num == null) return "-";
+      const n = Number(num);
+      if (!isFinite(n)) return "-";
+      if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + "B";
+      if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(2) + "M";
+      if (Math.abs(n) >= 1e3) return (n / 1e3).toFixed(2) + "K";
+      return n.toFixed(0);
+    }
+
+    const marketHoursLabel = (type) => {
+      const defaultObj = { text: "N/A", className: "" };
+
+      const typeObj = {
+        0: {
+          text: "PRE",
+          className: "market-pre"
+        },
+        1: {
+          text: "REG",
+          className: "market-regular"
+        },
+        2: {
+          text: "POST",
+          className: "market-post"
+        },
+        3: {
+          text: "EXT",
+          className: "market-extended"
+        },
+      }
+
+      return typeObj[type] || defaultObj;
+    }
+
+    const SparklineCharts = ({ history }) => {
+      const chartsRef = React.useRef({});
+
+      React.useEffect(() => {
+        Object.entries(history).forEach(([symbol, values]) => {
+          const canvas = document.getElementById(`chart-${symbol}`);
+          if (!canvas || !values || !values.length) return;
+
+          const existing = chartsRef.current[symbol];
+          if (existing) {
+            existing.destroy();
+          }
+
+          const chart = new Chart(canvas, {
+            type: "line",
+            data: {
+              labels: values.map((_, i) => i),
+              datasets: [{
+                data: values,
+                borderColor: "#00e676",
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 0,
+              }]
+            },
+            options: {
+              maintainAspectRatio: false,
+              scales: {
+                x: { display: false },
+                y: { display: false },
+              },
+              plugins: {
+                legend: { display: false },
+              },
+              elements: {
+                line: { borderJoinStyle: "round" }
+              }
+            }
+          });
+
+          chartsRef.current[symbol] = chart;
+        });
+      }, [history]);
+
+      return null;
+    }
+
+    const App = () => {
+
+      const [tickers, setTickers] = React.useState({});
+      const [prevPrices, setPrevPrices] = React.useState({});
+      const [history, setHistory] = React.useState({});
+      const wsRef = React.useRef(null);
+      const reconnectAttempts = React.useRef(0);
+
+      React.useEffect(() => {
+        connectWS();
+        return () => wsRef.current && wsRef.current.close();
+      }, []);
+
+      const connectWS = () => {
+        const backoff = Math.min(8000, 1000 * (2 ** reconnectAttempts.current));
+        console.log("Connecting WebSocket...");
+
+        const ws = new WebSocket("wss://streamer.finance.yahoo.com/?version=2", "yahoo");
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          console.log("WS connected");
+          reconnectAttempts.current = 0;
+          ws.send(JSON.stringify({ subscribe: STOCKS.map(s => s.symbol) }));
+        };
+
+        ws.onclose = () => {
+          console.warn("WS closed – reconnecting soon...");
+          reconnectAttempts.current++;
+          setTimeout(connectWS, backoff);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type !== "pricing") return;
+
+            const t = decodeTicker(data.message);
+            if (!t || !t.id || t.price == null) return;
+
+            const sym = t.id;
+
+            setPrevPrices(prev => ({
+              ...prev,
+              [sym]: tickers[sym]?.price
+            }));
+
+            setTickers(prev => ({
+              ...prev,
+              [sym]: t,
+            }));
+
+            setHistory(prev => {
+              const arr = prev[sym] || [];
+              const updated = [...arr, t.price].slice(-60);
+              return { ...prev, [sym]: updated };
+            });
+
+          } catch (err) {
+            console.error("onmessage error:", err);
+          }
+        };
+      }
+
+      return (
+        <div className="app">
+          <h1>📈 Yahoo Finance Live Prices</h1>
+
+          {STOCKS.map(conf => {
+            const t = tickers[conf.symbol];
+            const price = t?.price;
+            const change = t?.change;
+            const changePercent = t?.changePercent;
+            const prev = prevPrices[conf.symbol];
+
+            let trendClass = "";
+            if (price != null && prev != null && prev !== undefined) {
+              if (price > prev) trendClass = "green";
+              else if (price < prev) trendClass = "red";
+            }
+
+            const mhInfo = marketHoursLabel(t?.marketHours ?? 1);
+
+            const changeClass =
+              change != null && change !== 0
+                ? change > 0 ? "change-pos" : "change-neg"
+                : "";
+
+            const displayName = t?.shortName || conf.name;
+
+            return (
+              <div key={conf.symbol} className={`card ${trendClass}`}>
+                <div className="left">
+                  <img src={conf.logo} alt={conf.symbol} className="logo" />
+                  <div>
+                    <div className="name">{displayName}</div>
+                    <div className="symbol">
+                      {conf.symbol} · {t?.exchange || ""}
+                    </div>
+                    <span className={`market-tag ${mhInfo.className}`}>
+                      {mhInfo.text}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="right">
+                  <div className="price">
+                    {price != null ? `$${price.toFixed(2)}` : "…"}
+                    {t?.currency ? `${t.currency}` : ""}
+                  </div>
+
+                  <div className={`change-line ${changeClass}`}>
+                    <span>
+                      <b>
+                        {change != null
+                          ? `${change > 0 ? "+" : ""}${change.toFixed(2)}`
+                          : "0.00"}
+                        {" "}
+                        ({changePercent != null
+                          ? `${changePercent > 0 ? "+" : ""}${changePercent.toFixed(2)}%`
+                          : "0.00%"})
+                      </b>
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: 6, height: 40 }}>
+                    <canvas
+                      id={`chart-${conf.symbol}`}
+                      width="160"
+                      height="40"
+                    ></canvas>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          <SparklineCharts history={history} />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+
+</html>
