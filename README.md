@@ -2,6 +2,8 @@
 
 Yahoo is using Protocol Buffers (https://protobuf.dev) to serialize the info/data
 
+<img width="759" height="1179" alt="image" src="https://github.com/user-attachments/assets/9ca2b7ee-2b75-4991-b8b2-ce1dcf871e07" />
+
 <img width="907" height="751" alt="image" src="https://github.com/user-attachments/assets/0e6da03e-d3e5-4586-bc87-e88bd8c91606" />
 
 ```js
